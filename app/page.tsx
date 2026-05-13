@@ -499,7 +499,7 @@ export default function ProfitEstimator() {
                           paddingAngle={3}
                           stroke="rgba(255,255,255,0.12)"
                           strokeWidth={2}
-                          activeIndex={activeSlice}
+                          {...(activeSlice !== undefined ? { activeIndex: activeSlice } : {})}
                           activeShape={(props: any) => {
                             const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
                             return (
