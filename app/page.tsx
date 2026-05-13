@@ -1,854 +1,602 @@
 "use client";
-import React, { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Calculator,
-  Percent,
-  Coins,
-  Receipt,
-  TrendingUp,
-  Info,
-  PieChart as PieChartIcon,
-} from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-
-const translations = {
-  sv: {
-    title: "Profit Estimator",
-    subtitle:
-      "Räkna ut estimerad vinst i valuta och procent, även när du inte vet exakt produktkostnad.",
-    sales: "Försäljning",
-    adSpend: "Annonskostnad",
-    roas: "ROAS",
-    breakevenRoas: "Breakeven ROAS",
-    transactionFeeToggle: "Lägg till transaktionsavgift",
-    transactionFeeRate: "Transaktionsavgift %",
-    currency: "Valuta",
-    results: "Resultat",
-    visualBreakdown: "Visuell fördelning av försäljningen",
-    chartSubtitle:
-      "Se hur stor del av försäljningen som går till produktkostnad, annonser, avgifter och vinst.",
-    chartProductCost: "Produktkostnad",
-    chartAdSpend: "Annonskostnad",
-    chartFees: "Avgifter",
-    chartProfit: "Vinst",
-    estimatedProfit: "Estimerad vinst",
-    profitMargin: "Vinstmarginal",
-    afterProductCost: "Kvar efter produktkostnad",
-    estimatedProductCost: "Estimerad produktkostnad",
-    transactionFees: "Transaktionsavgifter",
-    costRatio: "Produktkostnad i %",
-    formulaTitle: "Hur kalkylatorn räknar",
-    formula1:
-      "Du behöver fylla i två av dessa tre: Försäljning, Annonskostnad, ROAS.",
-    formula2: "Saknas en av dem räknas den ut automatiskt.",
-    formula3: "Kvar efter produktkostnad = Försäljning / Breakeven ROAS",
-    formula4:
-      "Estimerad vinst = Kvar efter produktkostnad - Annonskostnad - Transaktionsavgift",
-    notesTitle: "Viktigt att tänka på",
-    note1:
-      "Detta är en uppskattning. Den blir bra så länge din breakeven ROAS är korrekt för perioden du analyserar.",
-    note2:
-      "Om produktmix, frakt, moms, rabatter eller upsells ändras kan verklig vinst skilja sig från estimatet.",
-    clear: "Reset",
-    invalid:
-      "Fyll i breakeven ROAS och minst två av följande: försäljning, annonskostnad, ROAS.",
-    autoCalculated: "Beräknas automatiskt",
-    enterAnyTwo: "Fyll i valfria två",
-  },
-  en: {
-    title: "Profit Estimator",
-    subtitle:
-      "Estimate profit in currency and percent, even when you do not know the exact product cost.",
-    sales: "Sales",
-    adSpend: "Ad Spend",
-    roas: "ROAS",
-    breakevenRoas: "Breakeven ROAS",
-    transactionFeeToggle: "Add transaction fee",
-    transactionFeeRate: "Transaction fee %",
-    currency: "Currency",
-    results: "Results",
-    visualBreakdown: "Visual breakdown of sales",
-    chartSubtitle:
-      "See how much of your sales goes to product cost, ads, fees, and profit.",
-    chartProductCost: "Product Cost",
-    chartAdSpend: "Ad Spend",
-    chartFees: "Fees",
-    chartProfit: "Profit",
-    estimatedProfit: "Estimated Profit",
-    profitMargin: "Profit Margin",
-    afterProductCost: "Remaining After Product Cost",
-    estimatedProductCost: "Estimated Product Cost",
-    transactionFees: "Transaction Fees",
-    costRatio: "Product Cost %",
-    formulaTitle: "How the calculator works",
-    formula1:
-      "You need to enter any two of these three: Sales, Ad Spend, ROAS.",
-    formula2: "The missing one is calculated automatically.",
-    formula3: "Remaining after product cost = Sales / Breakeven ROAS",
-    formula4:
-      "Estimated profit = Remaining after product cost - Ad spend - Transaction fee",
-    notesTitle: "Important to remember",
-    note1:
-      "This is an estimate. It works well as long as your breakeven ROAS is accurate for the period you are analyzing.",
-    note2:
-      "If product mix, shipping, VAT, discounts, or upsells change, real profit can differ from the estimate.",
-    clear: "Reset",
-    invalid:
-      "Enter breakeven ROAS and at least two of the following: sales, ad spend, ROAS.",
-    autoCalculated: "Auto-calculated",
-    enterAnyTwo: "Enter any two",
-  },
-  de: {
-    title: "Profit Estimator",
-    subtitle:
-      "Berechne den geschätzten Gewinn in Währung und Prozent, auch wenn du die genauen Produktkosten nicht kennst.",
-    sales: "Umsatz",
-    adSpend: "Werbekosten",
-    roas: "ROAS",
-    breakevenRoas: "Break-even-ROAS",
-    transactionFeeToggle: "Transaktionsgebühr hinzufügen",
-    transactionFeeRate: "Transaktionsgebühr %",
-    currency: "Währung",
-    results: "Ergebnisse",
-    visualBreakdown: "Visuelle Aufteilung des Umsatzes",
-    chartSubtitle:
-      "Sieh, wie viel deines Umsatzes auf Produktkosten, Werbung, Gebühren und Gewinn entfällt.",
-    chartProductCost: "Produktkosten",
-    chartAdSpend: "Werbekosten",
-    chartFees: "Gebühren",
-    chartProfit: "Gewinn",
-    estimatedProfit: "Geschätzter Gewinn",
-    profitMargin: "Gewinnmarge",
-    afterProductCost: "Verbleibend nach Produktkosten",
-    estimatedProductCost: "Geschätzte Produktkosten",
-    transactionFees: "Transaktionsgebühren",
-    costRatio: "Produktkosten in %",
-    formulaTitle: "So funktioniert der Rechner",
-    formula1: "Gib zwei von diesen drei Werten ein: Umsatz, Werbekosten, ROAS.",
-    formula2: "Der fehlende Wert wird automatisch berechnet.",
-    formula3: "Verbleibend nach Produktkosten = Umsatz / Break-even-ROAS",
-    formula4:
-      "Geschätzter Gewinn = Verbleibend nach Produktkosten - Werbekosten - Transaktionsgebühr",
-    notesTitle: "Wichtig zu beachten",
-    note1:
-      "Das ist eine Schätzung. Sie ist gut nutzbar, solange deine Break-even-ROAS für den analysierten Zeitraum korrekt ist.",
-    note2:
-      "Wenn sich Produktmix, Versand, MwSt., Rabatte oder Upsells ändern, kann der echte Gewinn vom Schätzwert abweichen.",
-    clear: "Reset",
-    invalid:
-      "Bitte Break-even-ROAS und mindestens zwei von folgenden Werten eingeben: Umsatz, Werbekosten, ROAS.",
-    autoCalculated: "Automatisch berechnet",
-    enterAnyTwo: "Beliebige zwei eingeben",
-  },
-  fr: {
-    title: "Profit Estimator",
-    subtitle:
-      "Estimez votre profit en devise et en pourcentage, même si vous ne connaissez pas le coût exact du produit.",
-    sales: "Ventes",
-    adSpend: "Dépenses publicitaires",
-    roas: "ROAS",
-    breakevenRoas: "ROAS de rentabilité",
-    transactionFeeToggle: "Ajouter des frais de transaction",
-    transactionFeeRate: "Frais de transaction %",
-    currency: "Devise",
-    results: "Résultats",
-    visualBreakdown: "Répartition visuelle des ventes",
-    chartSubtitle:
-      "Voyez quelle part de vos ventes va au coût produit, aux publicités, aux frais et au profit.",
-    chartProductCost: "Coût produit",
-    chartAdSpend: "Dépenses pub",
-    chartFees: "Frais",
-    chartProfit: "Profit",
-    estimatedProfit: "Profit estimé",
-    profitMargin: "Marge bénéficiaire",
-    afterProductCost: "Reste après coût produit",
-    estimatedProductCost: "Coût produit estimé",
-    transactionFees: "Frais de transaction",
-    costRatio: "Coût produit en %",
-    formulaTitle: "Comment le calculateur fonctionne",
-    formula1:
-      "Saisissez deux de ces trois valeurs : Ventes, Dépenses publicitaires, ROAS.",
-    formula2: "La valeur manquante est calculée automatiquement.",
-    formula3: "Reste après coût produit = Ventes / ROAS de rentabilité",
-    formula4:
-      "Profit estimé = Reste après coût produit - Dépenses publicitaires - Frais de transaction",
-    notesTitle: "À garder en tête",
-    note1:
-      "Ceci est une estimation. Elle fonctionne bien tant que votre ROAS de rentabilité est correct pour la période analysée.",
-    note2:
-      "Si le mix produit, la livraison, la TVA, les remises ou les upsells changent, le profit réel peut différer de l'estimation.",
-    clear: "Reset",
-    invalid:
-      "Saisissez le ROAS de rentabilité et au moins deux des éléments suivants : ventes, dépenses publicitaires, ROAS.",
-    autoCalculated: "Calculé automatiquement",
-    enterAnyTwo: "Saisissez deux valeurs",
-  },
-  es: {
-    title: "Profit Estimator",
-    subtitle:
-      "Calcula el beneficio estimado en moneda y porcentaje, incluso si no conoces el coste exacto del producto.",
-    sales: "Ventas",
-    adSpend: "Gasto publicitario",
-    roas: "ROAS",
-    breakevenRoas: "ROAS de equilibrio",
-    transactionFeeToggle: "Añadir comisión por transacción",
-    transactionFeeRate: "Comisión por transacción %",
-    currency: "Moneda",
-    results: "Resultados",
-    visualBreakdown: "Desglose visual de las ventas",
-    chartSubtitle:
-      "Mira qué parte de tus ventas va al coste del producto, anuncios, comisiones y beneficio.",
-    chartProductCost: "Coste del producto",
-    chartAdSpend: "Gasto publicitario",
-    chartFees: "Comisiones",
-    chartProfit: "Beneficio",
-    estimatedProfit: "Beneficio estimado",
-    profitMargin: "Margen de beneficio",
-    afterProductCost: "Restante después del coste del producto",
-    estimatedProductCost: "Coste estimado del producto",
-    transactionFees: "Comisiones por transacción",
-    costRatio: "Coste del producto en %",
-    formulaTitle: "Cómo funciona la calculadora",
-    formula1:
-      "Introduce dos de estos tres valores: Ventas, Gasto publicitario, ROAS.",
-    formula2: "El valor que falta se calcula automáticamente.",
-    formula3:
-      "Restante después del coste del producto = Ventas / ROAS de equilibrio",
-    formula4:
-      "Beneficio estimado = Restante después del coste del producto - Gasto publicitario - Comisión por transacción",
-    notesTitle: "Importante tener en cuenta",
-    note1:
-      "Esto es una estimación. Funciona bien siempre que tu ROAS de equilibrio sea correcto para el periodo analizado.",
-    note2:
-      "Si cambian la mezcla de productos, el envío, el IVA, los descuentos o los upsells, el beneficio real puede diferir de la estimación.",
-    clear: "Reset",
-    invalid:
-      "Introduce el ROAS de equilibrio y al menos dos de los siguientes: ventas, gasto publicitario, ROAS.",
-    autoCalculated: "Calculado automáticamente",
-    enterAnyTwo: "Introduce dos valores",
-  },
-} as const;
-
-type Lang = keyof typeof translations;
-
-type ChartItem = {
-  name: string;
-  value: number;
-  color: string;
-};
+import React, { useState, useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from "recharts";
 
 const currencies = ["EUR", "USD", "SEK", "GBP"];
 
-const chartColorMap = {
+const chartColors = {
   productCost: "#f59e0b",
   adSpend: "#1877F2",
   fees: "#8b5cf6",
   profit: "#22c55e",
 };
 
-function normalizeNumberInput(value: string) {
-  return value.replace(/\s/g, "").replace(/,/g, ".");
-}
+const inputClass =
+  "h-9 w-full bg-slate-900 border border-white/10 rounded-xl px-3 text-sm text-white outline-none focus:border-emerald-400/50 transition-colors placeholder-slate-600";
 
-function parseNumber(value: string) {
-  const normalized = normalizeNumberInput(value);
+function parseNumber(value: string): number | null {
+  const normalized = value.replace(/\s/g, "").replace(/,/g, ".");
   if (!normalized) return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatNumberForInput(value: number) {
-  if (!Number.isFinite(value)) return "";
-  return String(Number(value.toFixed(4))).replace(/\.0+$/, "");
-}
-
-function getLocale(lang: Lang) {
-  const localeMap: Record<Lang, string> = {
-    sv: "sv-SE",
-    en: "en-US",
-    de: "de-DE",
-    fr: "fr-FR",
-    es: "es-ES",
-  };
-
-  return localeMap[lang];
-}
-
-function formatCurrency(value: number, currency: string, lang: Lang) {
-  return new Intl.NumberFormat(getLocale(lang), {
+function formatCurrency(value: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
-function formatPercent(value: number, lang: Lang) {
-  return new Intl.NumberFormat(getLocale(lang), {
-    style: "percent",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+function formatPct(value: number): string {
+  return (value * 100).toFixed(1) + "%";
 }
 
-export default function ProfitEstimatorCalculator() {
-  const [lang, setLang] = useState<Lang>("en");
-  const t = translations[lang];
-
-  const [sales, setSales] = useState("51313");
-  const [adSpend, setAdSpend] = useState("29932");
-  const [roas, setRoas] = useState("");
-  const [breakevenRoas, setBreakevenRoas] = useState("1,2");
-  const [transactionFeeEnabled, setTransactionFeeEnabled] = useState(true);
-  const [transactionFeeRate, setTransactionFeeRate] = useState("5");
-  const [currency, setCurrency] = useState("EUR");
-  const [roasMode, setRoasMode] = useState<"efficiency" | "scaling">(
-    "efficiency",
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors"
+    >
+      <span
+        className="relative w-8 h-4 rounded-full transition-colors"
+        style={{
+          backgroundColor: checked
+            ? "rgb(16 185 129 / 0.3)"
+            : "rgb(255 255 255 / 0.1)",
+        }}
+      >
+        <span
+          className="absolute top-0.5 w-3 h-3 rounded-full transition-all"
+          style={{
+            left: checked ? "18px" : "2px",
+            backgroundColor: checked
+              ? "rgb(52 211 153)"
+              : "rgb(100 116 139)",
+          }}
+        />
+      </span>
+      {label}
+    </button>
   );
+}
 
-  const parsedSales = parseNumber(sales);
-  const parsedAdSpend = parseNumber(adSpend);
-  const parsedRoas = parseNumber(roas);
-  const parsedBreakevenRoas = parseNumber(breakevenRoas);
-  const parsedTransactionFeeRate = parseNumber(transactionFeeRate);
+export default function ProfitEstimator() {
+  const [sales, setSales] = useState("");
+  const [adSpend, setAdSpend] = useState("");
+  const [roas, setRoas] = useState("");
+  const [breakevenRoas, setBreakevenRoas] = useState("");
+  const [feeEnabled, setFeeEnabled] = useState(false);
+  const [feeRate, setFeeRate] = useState("5");
+  const [currency, setCurrency] = useState("EUR");
+  const [roasMode, setRoasMode] = useState<"fix-sales" | "fix-adspend">(
+    "fix-sales"
+  );
+  const [showFormula, setShowFormula] = useState(false);
+  const [activeSlice, setActiveSlice] = useState<number | undefined>(undefined);
 
-  const fieldCount = [parsedSales, parsedAdSpend, parsedRoas].filter(
-    (value) => value !== null && value > 0,
-  ).length;
+  const pSales = parseNumber(sales);
+  const pAdSpend = parseNumber(adSpend);
+  const pRoas = parseNumber(roas);
+  const pBreakevenRoas = parseNumber(breakevenRoas);
+  const pFeeRate = parseNumber(feeRate) ?? 5;
 
   const resolved = useMemo(() => {
-    if (!parsedBreakevenRoas || parsedBreakevenRoas <= 0) {
-      return null;
+    if (!pBreakevenRoas || pBreakevenRoas <= 0) return null;
+
+    let rSales = pSales;
+    let rAdSpend = pAdSpend;
+    let rRoas = pRoas;
+
+    if (rSales && rAdSpend && (!rRoas || rRoas <= 0)) {
+      rRoas = rSales / rAdSpend;
+    } else if (rSales && rRoas && (!rAdSpend || rAdSpend <= 0)) {
+      rAdSpend = rSales / rRoas;
+    } else if (rAdSpend && rRoas && (!rSales || rSales <= 0)) {
+      rSales = rAdSpend * rRoas;
     }
 
-    let resolvedSales = parsedSales;
-    let resolvedAdSpend = parsedAdSpend;
-    let resolvedRoas = parsedRoas;
-
-    if (
-      resolvedSales &&
-      resolvedAdSpend &&
-      (!resolvedRoas || resolvedRoas <= 0)
-    ) {
-      resolvedRoas = resolvedSales / resolvedAdSpend;
-    } else if (
-      resolvedSales &&
-      resolvedRoas &&
-      (!resolvedAdSpend || resolvedAdSpend <= 0)
-    ) {
-      resolvedAdSpend = resolvedSales / resolvedRoas;
-    } else if (
-      resolvedAdSpend &&
-      resolvedRoas &&
-      (!resolvedSales || resolvedSales <= 0)
-    ) {
-      resolvedSales = resolvedAdSpend * resolvedRoas;
-    }
-
-    if (parsedRoas && resolvedSales && resolvedAdSpend) {
-      if (roasMode === "efficiency") {
-        resolvedAdSpend = resolvedSales / parsedRoas;
+    if (pRoas && rSales && rAdSpend) {
+      if (roasMode === "fix-sales") {
+        rAdSpend = rSales / pRoas;
       } else {
-        resolvedSales = resolvedAdSpend * parsedRoas;
+        rSales = rAdSpend * pRoas;
       }
-      resolvedRoas = parsedRoas;
+      rRoas = pRoas;
     }
 
     if (
-      !resolvedSales ||
-      resolvedSales <= 0 ||
-      resolvedAdSpend === null ||
-      resolvedAdSpend < 0 ||
-      !resolvedRoas ||
-      resolvedRoas <= 0
+      !rSales ||
+      rSales <= 0 ||
+      rAdSpend === null ||
+      rAdSpend < 0 ||
+      !rRoas ||
+      rRoas <= 0
     ) {
       return null;
     }
 
-    const safeTransactionFeeRate = transactionFeeEnabled
-      ? Math.max(parsedTransactionFeeRate ?? 0, 0) / 100
-      : 0;
+    const feeRateFraction = feeEnabled ? Math.max(pFeeRate, 0) / 100 : 0;
+    const afterProductCost = rSales / pBreakevenRoas;
+    const estimatedProductCost = rSales - afterProductCost;
+    const fees = rSales * feeRateFraction;
+    const profit = afterProductCost - rAdSpend - fees;
+    const margin = profit / rSales;
+    const cogRatio = estimatedProductCost / rSales;
 
-    const remainingAfterProductCost = resolvedSales / parsedBreakevenRoas;
-    const estimatedProductCost = resolvedSales - remainingAfterProductCost;
-    const transactionFees = resolvedSales * safeTransactionFeeRate;
-    const estimatedProfit =
-      remainingAfterProductCost - resolvedAdSpend - transactionFees;
-    const profitMargin = estimatedProfit / resolvedSales;
-    const productCostRatio = estimatedProductCost / resolvedSales;
-
-    const chartData: ChartItem[] = [
+    const chartData = [
       {
-        name: t.chartProductCost,
+        name: "Product Cost",
         value: Math.max(estimatedProductCost, 0),
-        color: chartColorMap.productCost,
+        color: chartColors.productCost,
       },
       {
-        name: t.chartAdSpend,
-        value: Math.max(resolvedAdSpend, 0),
-        color: chartColorMap.adSpend,
+        name: "Ad Spend",
+        value: Math.max(rAdSpend, 0),
+        color: chartColors.adSpend,
       },
+      ...(fees > 0
+        ? [{ name: "Transaction Fees", value: fees, color: chartColors.fees }]
+        : []),
       {
-        name: t.chartFees,
-        value: Math.max(transactionFees, 0),
-        color: chartColorMap.fees,
-      },
-      {
-        name: t.chartProfit,
-        value: Math.max(estimatedProfit, 0),
-        color: chartColorMap.profit,
+        name: "Profit",
+        value: Math.max(profit, 0),
+        color: chartColors.profit,
       },
     ].filter((item) => item.value > 0);
 
     return {
-      sales: resolvedSales,
-      adSpend: resolvedAdSpend,
-      roas: resolvedRoas,
-      remainingAfterProductCost,
+      sales: rSales,
+      adSpend: rAdSpend,
+      roas: rRoas,
+      afterProductCost,
       estimatedProductCost,
-      transactionFees,
-      estimatedProfit,
-      profitMargin,
-      productCostRatio,
+      fees,
+      profit,
+      margin,
+      cogRatio,
       chartData,
     };
-  }, [
-    parsedSales,
-    parsedAdSpend,
-    parsedRoas,
-    parsedBreakevenRoas,
-    parsedTransactionFeeRate,
-    transactionFeeEnabled,
-    roasMode,
-    t.chartProductCost,
-    t.chartAdSpend,
-    t.chartFees,
-    t.chartProfit,
-  ]);
+  }, [pSales, pAdSpend, pRoas, pBreakevenRoas, pFeeRate, feeEnabled, roasMode]);
 
-  const isValid = Boolean(resolved) && fieldCount >= 2;
+  const filledCount = [pSales, pAdSpend, pRoas].filter(
+    (v) => v !== null && v > 0
+  ).length;
+  const isValid = Boolean(resolved) && filledCount >= 2;
 
-  const salesIsAuto = parsedSales === null && Boolean(resolved?.sales);
-  const adSpendIsAuto = parsedAdSpend === null && Boolean(resolved?.adSpend);
-  const roasIsAuto = parsedRoas === null && Boolean(resolved?.roas);
+  const salesIsAuto = pSales === null && Boolean(resolved?.sales);
+  const adSpendIsAuto = pAdSpend === null && Boolean(resolved?.adSpend);
+  const roasIsAuto = pRoas === null && Boolean(resolved?.roas);
 
-  const clearAll = () => {
+  const hasAnyInput =
+    pSales !== null ||
+    pAdSpend !== null ||
+    pRoas !== null ||
+    pBreakevenRoas !== null;
+
+  const resetAll = () => {
     setSales("");
     setAdSpend("");
     setRoas("");
     setBreakevenRoas("");
-    setTransactionFeeEnabled(false);
-    setTransactionFeeRate("5");
-    setCurrency("EUR");
+    // fee state intentionally preserved
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
-              {t.title}
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-600 md:text-base">
-              {t.subtitle}
-            </p>
-          </div>
+    <div className="min-h-screen bg-slate-950 text-white px-4 py-10">
+      <div className="max-w-5xl mx-auto space-y-5">
 
-          <Tabs value={lang} onValueChange={(value) => setLang(value as Lang)}>
-            <TabsList className="grid w-full grid-cols-5 md:w-[420px]">
-              <TabsTrigger value="en">EN</TabsTrigger>
-              <TabsTrigger value="sv">SV</TabsTrigger>
-              <TabsTrigger value="de">DE</TabsTrigger>
-              <TabsTrigger value="fr">FR</TabsTrigger>
-              <TabsTrigger value="es">ES</TabsTrigger>
-            </TabsList>
-          </Tabs>
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex rounded-full bg-emerald-400/10 border border-emerald-400/20 px-4 py-1.5 text-xs font-medium text-emerald-300 tracking-wide uppercase">
+            EM Academy Tools
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Profit Estimator
+          </h1>
+          <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+            Estimate profit without knowing your exact product cost - enter any two of Sales, Ad Spend, or ROAS.
+          </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <Card className="rounded-3xl border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Calculator className="h-5 w-5" />
-                {t.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <InputField
-                  label={t.sales}
+        <div className="grid gap-5 lg:grid-cols-2">
+
+          {/* Inputs */}
+          <div className="rounded-3xl bg-white/[0.06] border border-white/10 shadow-2xl p-6 space-y-5">
+            <div>
+              <div className="w-7 h-0.5 bg-emerald-400 rounded-full mb-2" />
+              <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                Your Numbers
+              </h2>
+            </div>
+
+            <div className="rounded-2xl bg-emerald-400/[0.06] border border-emerald-400/20 px-4 py-3 text-xs text-slate-300 leading-relaxed">
+              Fill in <span className="text-emerald-400 font-medium">Breakeven ROAS</span> plus <span className="text-emerald-400 font-medium">any two</span> of Sales, Ad Spend, or ROAS - the third calculates automatically.
+            </div>
+
+            {/* Main four inputs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-400">Sales</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={inputClass}
+                  placeholder="50 000"
                   value={
                     salesIsAuto && resolved
-                      ? formatNumberForInput(resolved.sales)
+                      ? String(Math.round(resolved.sales))
                       : sales
                   }
-                  onChange={setSales}
-                  placeholder="50000"
-                  helper={salesIsAuto ? t.autoCalculated : t.enterAnyTwo}
+                  onChange={(e) => setSales(e.target.value)}
                 />
+                {salesIsAuto && (
+                  <p className="text-xs text-emerald-400 h-3">Auto-calculated</p>
+                )}
+              </div>
 
-                <InputField
-                  label={t.adSpend}
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-400">Ad Spend</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={inputClass}
+                  placeholder="25 000"
                   value={
                     adSpendIsAuto && resolved
-                      ? formatNumberForInput(resolved.adSpend)
+                      ? String(Math.round(resolved.adSpend))
                       : adSpend
                   }
-                  onChange={setAdSpend}
-                  placeholder="25000"
-                  helper={adSpendIsAuto ? t.autoCalculated : t.enterAnyTwo}
+                  onChange={(e) => setAdSpend(e.target.value)}
                 />
+                {adSpendIsAuto && (
+                  <p className="text-xs text-emerald-400">Auto-calculated</p>
+                )}
+              </div>
 
-                <InputField
-                  label={t.roas}
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-400">
+                  Breakeven ROAS <span className="text-emerald-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={inputClass}
+                  placeholder="1.2"
+                  value={breakevenRoas}
+                  onChange={(e) => setBreakevenRoas(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-400">ROAS</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={inputClass}
+                  placeholder="1.8"
                   value={
                     roasIsAuto && resolved
-                      ? formatNumberForInput(resolved.roas)
+                      ? resolved.roas.toFixed(2)
                       : roas
                   }
-                  onChange={setRoas}
-                  placeholder="1,8"
-                  helper={roasIsAuto ? t.autoCalculated : t.enterAnyTwo}
+                  onChange={(e) => setRoas(e.target.value)}
                 />
-
-                <InputField
-                  label={t.breakevenRoas}
-                  value={breakevenRoas}
-                  onChange={setBreakevenRoas}
-                  placeholder="1,2"
-                />
+                {roasIsAuto && (
+                  <p className="text-xs text-emerald-400">Auto-calculated</p>
+                )}
               </div>
+            </div>
 
-              <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                <Label className="text-sm font-medium">ROAS Behavior</Label>
+            {/* ROAS conflict resolver - only shown when all 3 are filled */}
+            {filledCount === 3 && (
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-3 space-y-2">
+                <p className="text-xs text-slate-400">
+                  All three entered - which value should adjust?
+                </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant={roasMode === "efficiency" ? "default" : "outline"}
-                    onClick={() => setRoasMode("efficiency")}
-                    className="rounded-2xl"
+                  <button
+                    onClick={() => setRoasMode("fix-sales")}
+                    className={`rounded-xl px-3 py-2 text-xs font-medium transition-colors border ${
+                      roasMode === "fix-sales"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : "bg-white/[0.04] text-slate-400 border-white/10 hover:text-white"
+                    }`}
                   >
-                    Efficiency Mode
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={roasMode === "scaling" ? "default" : "outline"}
-                    onClick={() => setRoasMode("scaling")}
-                    className="rounded-2xl"
+                    Adjust Ad Spend
+                  </button>
+                  <button
+                    onClick={() => setRoasMode("fix-adspend")}
+                    className={`rounded-xl px-3 py-2 text-xs font-medium transition-colors border ${
+                      roasMode === "fix-adspend"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : "bg-white/[0.04] text-slate-400 border-white/10 hover:text-white"
+                    }`}
                   >
-                    Scaling Mode
-                  </Button>
+                    Adjust Sales
+                  </button>
                 </div>
-                <p className="text-xs text-slate-500">
-                  {roasMode === "efficiency"
-                    ? "Changing ROAS adjusts ad spend (sales fixed)"
-                    : "Changing ROAS adjusts sales (ad spend fixed)"}
+                <p className="text-xs text-slate-600">
+                  {roasMode === "fix-sales"
+                    ? "Sales stay fixed - ad spend recalculates from ROAS"
+                    : "Ad spend stays fixed - sales recalculates from ROAS"}
                 </p>
               </div>
+            )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <Label className="text-sm font-medium leading-snug">
-                      {t.transactionFeeToggle}
-                    </Label>
-                    <Switch
-                      checked={transactionFeeEnabled}
-                      onCheckedChange={setTransactionFeeEnabled}
-                    />
-                  </div>
-
-                  {transactionFeeEnabled ? (
-                    <div className="space-y-2">
-                      <Label className="text-xs text-slate-600">
-                        {t.transactionFeeRate}
-                      </Label>
-                      <Input
-                        inputMode="decimal"
-                        value={transactionFeeRate}
-                        onChange={(e) => setTransactionFeeRate(e.target.value)}
-                        placeholder="5"
-                      />
-                    </div>
-                  ) : null}
+            {/* Fee toggle */}
+            <div className="flex items-center gap-3">
+              <Toggle
+                checked={feeEnabled}
+                onChange={() => setFeeEnabled(!feeEnabled)}
+                label="Transaction fee"
+              />
+              {feeEnabled && (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    step={0.1}
+                    value={feeRate}
+                    onChange={(e) => setFeeRate(e.target.value)}
+                    className="w-14 h-7 bg-slate-900 border border-white/10 rounded-lg px-2 text-xs text-white text-center outline-none focus:border-emerald-400/50 transition-colors"
+                  />
+                  <span className="text-xs text-slate-500">%</span>
                 </div>
+              )}
+            </div>
 
-                <div className="space-y-2">
-                  <Label>{t.currency}</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {currencies.map((item) => (
-                      <Button
-                        key={item}
-                        type="button"
-                        variant={currency === item ? "default" : "outline"}
-                        className="rounded-2xl"
-                        onClick={() => setCurrency(item)}
+            {/* Currency */}
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400">Currency</p>
+              <div className="flex gap-2">
+                {currencies.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCurrency(c)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors border ${
+                      currency === c
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : "bg-white/[0.04] text-slate-400 border-white/10 hover:text-white"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Validation hint */}
+            {!isValid && hasAnyInput && (
+              <p className="text-xs text-amber-400">
+                Enter Breakeven ROAS and at least two of: Sales, Ad Spend, ROAS.
+              </p>
+            )}
+
+            {/* Reset + How it works */}
+            <div className="flex items-center justify-between pt-1">
+              <button
+                onClick={resetAll}
+                className="bg-white/10 hover:bg-white/[0.15] text-slate-300 rounded-xl px-5 py-2 text-sm font-medium transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => setShowFormula(!showFormula)}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {showFormula ? "Hide formula" : "How it works"}
+              </button>
+            </div>
+
+            {/* Collapsible formula */}
+            {showFormula && (
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 space-y-2 text-xs text-slate-400 leading-relaxed">
+                <p>Enter any two of Sales, Ad Spend, ROAS - the third calculates automatically.</p>
+                <p>After product cost = Sales / Breakeven ROAS</p>
+                <p>Estimated profit = After product cost - Ad spend - Transaction fee</p>
+                <p className="text-slate-600 pt-1">
+                  Works well as long as your breakeven ROAS accurately reflects your product mix for the period.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Results */}
+          <div className="space-y-5">
+            {isValid && resolved ? (
+              <>
+                {/* Stat cards */}
+                <div className="rounded-3xl bg-white/[0.06] border border-white/10 shadow-2xl p-6">
+                  <div>
+                    <div className="w-7 h-0.5 bg-emerald-400 rounded-full mb-2" />
+                    <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-4">
+                      Results
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4">
+                      <p className="text-xs text-slate-500 mb-1">Estimated Profit</p>
+                      <p
+                        className={`text-xl font-bold ${
+                          resolved.profit >= 0
+                            ? "text-emerald-400"
+                            : "text-red-400"
+                        }`}
                       >
-                        {item}
-                      </Button>
-                    ))}
+                        {formatCurrency(resolved.profit, currency)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4">
+                      <p className="text-xs text-slate-500 mb-1">Profit Margin</p>
+                      <p
+                        className={`text-xl font-bold ${
+                          resolved.margin >= 0.1
+                            ? "text-emerald-400"
+                            : resolved.margin >= 0
+                            ? "text-amber-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {formatPct(resolved.margin)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4">
+                      <p className="text-xs text-slate-500 mb-1">After Product Cost</p>
+                      <p className="text-xl font-bold text-white">
+                        {formatCurrency(resolved.afterProductCost, currency)}
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">covers ads + profit</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4">
+                      <p className="text-xs text-slate-500 mb-1">Est. Product Cost</p>
+                      <p className="text-xl font-bold text-white">
+                        {formatCurrency(resolved.estimatedProductCost, currency)}
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">{formatPct(resolved.cogRatio)} of sales</p>
+                    </div>
+                    {resolved.fees > 0 && (
+                      <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4 col-span-2">
+                        <p className="text-xs text-slate-500 mb-1">
+                          Transaction Fees
+                        </p>
+                        <p className="text-xl font-bold text-white">
+                          {formatCurrency(resolved.fees, currency)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap gap-3">
-                {" "}
-                <Button
-                  onClick={clearAll}
-                  variant="outline"
-                  className="rounded-2xl"
-                >
-                  {t.clear}
-                </Button>
-              </div>
-
-              {!isValid ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  {t.invalid}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <div className="space-y-6">
-            <Card className="rounded-3xl border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl">{t.results}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {resolved && isValid ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <ResultCard
-                      icon={<Coins className="h-5 w-5" />}
-                      label={t.estimatedProfit}
-                      value={formatCurrency(
-                        resolved.estimatedProfit,
-                        currency,
-                        lang,
-                      )}
-                    />
-                    <ResultCard
-                      icon={<Percent className="h-5 w-5" />}
-                      label={t.profitMargin}
-                      value={formatPercent(resolved.profitMargin, lang)}
-                    />
-                    <ResultCard
-                      icon={<TrendingUp className="h-5 w-5" />}
-                      label={t.afterProductCost}
-                      value={formatCurrency(
-                        resolved.remainingAfterProductCost,
-                        currency,
-                        lang,
-                      )}
-                    />
-                    <ResultCard
-                      icon={<Receipt className="h-5 w-5" />}
-                      label={t.estimatedProductCost}
-                      value={formatCurrency(
-                        resolved.estimatedProductCost,
-                        currency,
-                        lang,
-                      )}
-                    />
-                    <ResultCard
-                      icon={<Receipt className="h-5 w-5" />}
-                      label={t.transactionFees}
-                      value={formatCurrency(
-                        resolved.transactionFees,
-                        currency,
-                        lang,
-                      )}
-                    />
-                    <ResultCard
-                      icon={<Percent className="h-5 w-5" />}
-                      label={t.costRatio}
-                      value={formatPercent(resolved.productCostRatio, lang)}
-                    />
+                {/* Pie chart */}
+                <div className="rounded-3xl bg-white/[0.06] border border-white/10 shadow-2xl p-6">
+                  <div>
+                    <div className="w-7 h-0.5 bg-emerald-400 rounded-full mb-2" />
+                    <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-4">
+                      Sales Breakdown
+                    </h2>
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            {resolved && isValid ? (
-              <Card className="rounded-3xl border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <PieChartIcon className="h-5 w-5" />
-                    {t.visualBreakdown}
-                  </CardTitle>
-                  <p className="text-sm text-slate-600">{t.chartSubtitle}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={resolved.chartData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={70}
+                          outerRadius={110}
+                          paddingAngle={3}
+                          stroke="rgba(255,255,255,0.12)"
+                          strokeWidth={2}
+                          activeIndex={activeSlice}
+                          activeShape={(props: any) => {
+                            const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                            return (
+                              <g style={{ transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)", transformOrigin: `${cx}px ${cy}px`, transform: "scale(1.07)" }}>
+                                <Sector
+                                  cx={cx}
+                                  cy={cy}
+                                  innerRadius={innerRadius}
+                                  outerRadius={outerRadius}
+                                  startAngle={startAngle}
+                                  endAngle={endAngle}
+                                  fill={fill}
+                                  stroke="rgba(255,255,255,0.15)"
+                                  strokeWidth={2}
+                                />
+                              </g>
+                            );
+                          }}
+                          onMouseEnter={(_, index) => setActiveSlice(index)}
+                          onMouseLeave={() => setActiveSlice(undefined)}
+                        >
+                          {resolved.chartData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} stroke="rgba(255,255,255,0.12)" strokeWidth={2} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#0f172a",
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            borderRadius: 12,
+                            padding: "8px 12px",
+                          }}
+                          itemStyle={{ color: "#e2e8f0", fontSize: 13 }}
+                          labelStyle={{ color: "#94a3b8", fontSize: 12 }}
+                          formatter={(value: number, name: string) => [
+                            formatCurrency(Number(value), currency),
+                            name,
+                          ]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2 mt-2">
                     {resolved.chartData.map((item) => (
                       <div
                         key={item.name}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
+                        className="flex items-center justify-between"
                       >
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        {item.name}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="text-xs text-slate-400">
+                            {item.name}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-semibold text-white">
+                            {formatCurrency(item.value, currency)}
+                          </span>
+                          <span className="text-xs text-slate-600 ml-2">
+                            {formatPct(item.value / resolved.sales)}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-                    <div className="h-[280px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={resolved.chartData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={60}
-                            outerRadius={95}
-                            paddingAngle={3}
-                          >
-                            {resolved.chartData.map((entry, index) => (
-                              <Cell
-                                key={`${entry.name}-${index}`}
-                                fill={entry.color}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              borderRadius: 16,
-                              border: "1px solid #e2e8f0",
-                              boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
-                            }}
-                            formatter={(value: number | string) =>
-                              formatCurrency(Number(value), currency, lang)
-                            }
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
+                </div>
 
-                    <div className="space-y-3">
-                      {resolved.chartData.map((item) => (
-                        <div
-                          key={item.name}
-                          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="h-3.5 w-3.5 rounded-full"
-                              style={{ backgroundColor: item.color }}
-                            />
-                            <div>
-                              <p className="text-sm font-medium text-slate-900">
-                                {item.name}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {formatPercent(
-                                  item.value / resolved.sales,
-                                  lang,
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {formatCurrency(item.value, currency, lang)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                {/* Notes */}
+                <div className="rounded-3xl bg-white/[0.06] border border-white/10 shadow-2xl p-6 space-y-2">
+                  <div>
+                    <div className="w-7 h-0.5 bg-emerald-400 rounded-full mb-2" />
+                    <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-3">
+                      Keep in Mind
+                    </h2>
                   </div>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {resolved && isValid ? (
-              <Card className="rounded-3xl border-0 shadow-lg">
-                <CardContent className="pt-6">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start gap-3">
-                      <Info className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" />
-                      <div className="space-y-2 text-sm text-slate-700">
-                        <p className="font-medium">{t.formulaTitle}</p>
-                        <p>{t.formula1}</p>
-                        <p>{t.formula2}</p>
-                        <p>{t.formula3}</p>
-                        <p>{t.formula4}</p>
-                        {transactionFeeEnabled ? (
-                          <p className="text-xs text-slate-500">
-                            {t.transactionFeeRate}: {transactionFeeRate || "0"}%
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            <Card className="rounded-3xl border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl">{t.notesTitle}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-700">
-                <p>{t.note1}</p>
-                <p>{t.note2}</p>
-              </CardContent>
-            </Card>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    This is an estimate. It works well as long as your breakeven ROAS accurately reflects your product mix for the period you are analyzing.
+                  </p>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    If product mix, shipping, VAT, discounts, or upsells change, real profit can differ from the estimate.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-3xl bg-white/[0.06] border border-white/10 shadow-2xl p-6 flex items-center justify-center min-h-[200px]">
+                <p className="text-slate-500 text-sm text-center leading-relaxed">
+                  Fill in Breakeven ROAS and any two of<br />Sales, Ad Spend, ROAS to see results.
+                </p>
+              </div>
+            )}
           </div>
         </div>
+
       </div>
-    </div>
-  );
-}
-
-function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  helper,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  helper?: string;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <Input
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-      {helper ? <p className="text-xs text-slate-500">{helper}</p> : null}
-    </div>
-  );
-}
-
-function ResultCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2 text-slate-500">{icon}</div>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-        {value}
-      </p>
     </div>
   );
 }
