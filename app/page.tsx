@@ -534,9 +534,9 @@ export default function ProfitEstimator() {
                           }}
                           itemStyle={{ color: "#e2e8f0", fontSize: 13 }}
                           labelStyle={{ color: "#94a3b8", fontSize: 12 }}
-                          formatter={(value: number, name: string) => [
-                            formatCurrency(Number(value), currency),
-                            name,
+                          formatter={(value, name) => [
+                            formatCurrency(Number(value ?? 0), currency),
+                            name as string,
                           ]}
                         />
                       </PieChart>
